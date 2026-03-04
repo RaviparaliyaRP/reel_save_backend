@@ -69,7 +69,7 @@ def get_reel(url: str = Query(..., description="Instagram Reel URL")):
         
         ydl_opts = {
             'quiet': True,
-            'format': 'bestvideo+bestaudio/best',
+            'format': 'best',
             'merge_output_format': 'mp4',
         }
         
@@ -81,12 +81,21 @@ def get_reel(url: str = Query(..., description="Instagram Reel URL")):
             video_url = info.get('url')
             if not video_url and 'formats' in info:
                 formats = info.get('formats', [])
+                
+                # First, try to find a format that has both video and audio
                 for f in reversed(formats):
-                    if f.get('vcodec') != 'none':
+                    vcodec = f.get('vcodec')
+                    acodec = f.get('acodec')
+                    if vcodec and vcodec != 'none' and acodec and acodec != 'none':
                         video_url = f.get('url')
                         break
-                if not video_url and formats:
-                    video_url = formats[-1].get('url')
+                        
+                # Fallback to any format with video if no combined stream is found
+                if not video_url:
+                    for f in reversed(formats):
+                        if f.get('vcodec') and f.get('vcodec') != 'none':
+                            video_url = f.get('url')
+                            break
                 
             thumbnail_url = info.get('thumbnail')
             title = info.get('title', f"Reel_{int(time.time()*1000)}")
