@@ -15,6 +15,52 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+@app.get("/get-audio")
+def get_audio(url: str = Query(..., description="Instagram Reel URL for Audio")):
+    try:
+        clean_url = url.split("?")[0]
+        
+        ydl_opts = {
+            'quiet': True,
+            'format': 'bestaudio/best',
+            'postprocessors': [{
+                'key': 'FFmpegExtractAudio',
+                'preferredcodec': 'mp3',
+                'preferredquality': '192',
+            }],
+        }
+        
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(clean_url, download=False)
+            
+            # For audio, we look for formats with no video (vcodec='none')
+            audio_url = None
+            if 'formats' in info:
+                # filter for audio only formats
+                audio_formats = [f for f in info['formats'] if f.get('vcodec') == 'none' and f.get('acodec') != 'none']
+                if audio_formats:
+                    # pick the best audio format
+                    audio_url = audio_formats[-1].get('url')
+            
+            if not audio_url:
+                audio_url = info.get('url')
+                
+            thumbnail_url = info.get('thumbnail')
+            title = info.get('title', f"Audio_{int(time.time()*1000)}")
+            
+            if not audio_url:
+                return JSONResponse(status_code=400, content={"error": "Could not extract audio url"})
+                
+            return {
+                "audio_url": audio_url,
+                "thumbnail_url": thumbnail_url,
+                "title": title
+            }
+            
+    except Exception as e:
+        print(traceback.format_exc())
+        return JSONResponse(status_code=500, content={"error": str(e)})
+
 @app.get("/get-reel")
 def get_reel(url: str = Query(..., description="Instagram Reel URL")):
     try:
@@ -23,6 +69,8 @@ def get_reel(url: str = Query(..., description="Instagram Reel URL")):
         
         ydl_opts = {
             'quiet': True,
+            'format': 'bestvideo+bestaudio/best',
+            'merge_output_format': 'mp4',
         }
         
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
