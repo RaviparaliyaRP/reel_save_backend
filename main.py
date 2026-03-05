@@ -16,13 +16,13 @@ app.add_middleware(
 )
 
 @app.get("/get-audio")
-def get_audio(url: str = Query(..., description="Instagram Reel URL for Audio")):
+def get_audio(url: str = Query(..., description="Instagram Reel URL for Audio"), format: str = Query(None)):
     try:
         clean_url = url.split("?")[0]
         
         ydl_opts = {
             'quiet': True,
-            'format': 'bestaudio/best',
+            'format': format if format else 'bestaudio/best',
             'postprocessors': [{
                 'key': 'FFmpegExtractAudio',
                 'preferredcodec': 'mp3',
@@ -62,14 +62,14 @@ def get_audio(url: str = Query(..., description="Instagram Reel URL for Audio"))
         return JSONResponse(status_code=500, content={"error": str(e)})
 
 @app.get("/get-reel")
-def get_reel(url: str = Query(..., description="Instagram Reel URL")):
+def get_reel(url: str = Query(..., description="Instagram Reel URL"), format: str = Query(None)):
     try:
         # Clean it by removing everything after "?" symbol
         clean_url = url.split("?")[0]
         
         ydl_opts = {
             'quiet': True,
-            'format': 'best',
+            'format': format if format else 'bestvideo+bestaudio/best',
             'merge_output_format': 'mp4',
         }
         
